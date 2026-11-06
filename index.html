@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>8×8 Three-in-a-Row</title>
+
+  <!-- Page and board styles -->
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px auto; padding: 0 16px; max-width: 430px; color: #222; }
+    .board { display: grid; grid-template-columns: repeat(8, 40px); gap: 3px; width: max-content; padding: 3px; background: #777; }
+    .square { width: 40px; height: 40px; padding: 0; border: 1px solid #aaa; }
+    .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    button { padding: 7px 10px; }
+    pre { padding: 12px; overflow: auto; background: #f2f2f2; border-radius: 5px; }
+  </style>
+
+  <!-- Load React, ReactDOM, and Babel from CDNs; the page needs internet access -->
+  <script src="https://unpkg.com/react@18.2.0/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
+</head>
+<body>
+  <!-- React displays the app inside this element -->
+  <div id="root">Loading app…</div>
+
+  <!-- Babel turns this JSX into JavaScript the browser can run -->
+  <script type="text/babel">
+    // Make an empty board: 0 = white, 1 = black, and 2 = green
+    const emptyBoard = () => Array.from({ length: 8 }, () => Array(8).fill(0));
+
+    // Check for 3 matching squares in a row, column, or diagonal
+    function hasThree(board, player) {
+      const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          for (const [down, across] of directions) {
+            const endRow = row + 2 * down;
+            const endCol = col + 2 * across;
+            if (
+              endRow >= 0 && endRow < 8 && endCol >= 0 && endCol < 8 &&
+              board[row][col] === player &&
+              board[row + down][col + across] === player &&
+              board[endRow][endCol] === player
+            ) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // The app remembers the board, whose turn it is, and the game result
+    function App() {
+      const [board, setBoard] = React.useState(emptyBoard());
+      const [turn, setTurn] = React.useState(1);
+      const [winner, setWinner] = React.useState(0);
+      const [blackCount, setBlackCount] = React.useState(null);
+
+      // Put the current player's color in an empty square
+      function play(row, col) {
+        if (board[row][col] !== 0 || winner !== 0) return;
+        const nextBoard = board.map((line) => [...line]);
+        nextBoard[row][col] = turn;
+        setBoard(nextBoard);
+        setBlackCount(null);
+
+        if (hasThree(nextBoard, turn)) setWinner(turn);
+        else if (nextBoard.flat().every((square) => square !== 0)) setWinner(-1);
+        else setTurn(turn === 1 ? 2 : 1);
+      }
+
+      // Count the black squares
+      function countBlack() {
+        setBlackCount(board.flat().filter((square) => square === 1).length);
+      }
+
+      // Clear the board and start a new game with Black
+      function clearBoard() {
+        setBoard(emptyBoard());
+        setTurn(1);
+        setWinner(0);
+        setBlackCount(null);
+      }
+
+      // Make a Python-style list of lists to show below the board
+      const boardText = "[\n" + board.map((line) => "  [" + line.join(", ") + "]").join(",\n") + "\n]";
+
+      // Display the status, squares, buttons, and board data
+      return (
+        <main>
+          <h1>8×8 Three-in-a-Row</h1>
+          <p aria-live="polite">
+            {winner === 1 ? "Black wins!" : winner === 2 ? "Green wins!" : winner === -1 ? "It’s a draw!" : `Turn: ${turn === 1 ? "Black" : "Green"}`}
+          </p>
+
+          <div className="board" aria-label="Game board">
+            {board.map((line, row) => line.map((square, col) => (
+              <button
+                key={`${row}-${col}`}
+                type="button"
+                className="square"
+                aria-label={`Row ${row + 1}, column ${col + 1}: ${square === 0 ? "white" : square === 1 ? "black" : "green"}`}
+                onClick={() => play(row, col)}
+                style={{
+                  backgroundColor: square === 1 ? "black" : square === 2 ? "green" : "white",
+                  cursor: winner !== 0 || square !== 0 ? "default" : "pointer"
+                }}
+              />
+            )))}
+          </div>
+
+          <div className="controls">
+            <button type="button" onClick={countBlack}>Count black pixels</button>
+            <button type="button" onClick={clearBoard}>Clear</button>
+            {blackCount !== null && <span>Black pixels: <strong>{blackCount}</strong></span>}
+          </div>
+
+          <p>Grid values: 0 = white, 1 = black, 2 = green</p>
+          <pre>{boardText}</pre>
+        </main>
+      );
+    }
+
+    // Start the app in the root element
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
